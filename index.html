@@ -61,6 +61,13 @@ button.big:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.2)}
 .fb{border-radius:16px;font-size:18px}
 .parade{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:6px 0 14px}.parade img{width:auto;animation:bob 4s ease-in-out infinite}.parade img:nth-child(2n){animation-delay:-1.3s}.parade img:nth-child(3n){animation-delay:-2.4s}
 main{padding-top:46px}
+.ugrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.ut{padding:10px 0;font-size:19px;font-weight:700;min-height:48px;font-family:"Chalkboard SE","Comic Sans MS",system-ui,sans-serif}
+.ut.sel,.tabb.sel{background:var(--pri2);border-color:var(--pri)}
+.tabb{flex:1;font-weight:700;font-size:16px;padding:12px 6px;font-family:"Chalkboard SE","Comic Sans MS",system-ui,sans-serif}
+.hwgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.hwgrid button{text-align:left;min-height:82px;font-size:15px;line-height:1.3}
+.lb small{display:block;font-weight:400;font-size:13px}
 </style>
 </head>
 <body>
@@ -130,16 +137,40 @@ function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(M
 function save(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 function load(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}
 
-function home(){app.style.maxWidth="";if(!S.name||!S.cls)return sGate("self");
-  var g=S.grade||"";
-  $('<h1>📚 English Practice</h1><p class="sub">Global Success – Làm bài và xem điểm ngay!</p>'+
-  '<div class="card"><p style="margin:0 0 8px">👋 <b>'+esc(S.name)+'</b> · lớp '+esc(S.cls)+' <button class="link" id="chg">đổi</button></p>'+
-  '<label>Khối</label><div class="row grades">'+[3,4,5].map(function(n){return '<button data-g="'+n+'" class="'+(g==n?"sel":"")+'">Lớp '+n+'</button>'}).join("")+'</div></div>'+
-  '<div id="units"></div><p style="text-align:center;margin-top:20px"><button class="link" id="tc">← Về màn hình đầu</button></p>');document.getElementById("tc").onclick=landing;
-  document.getElementById("chg").onclick=function(){sGate("self")};app.querySelectorAll("[data-g]").forEach(function(b){b.onclick=function(){S.grade=b.dataset.g;home()}});
-  if(g){var h='<div class="card"><h2>Chọn bài</h2>';for(var u in DATA[g]){var best=load("best-"+g+u);h+='<div class="row" style="margin-top:8px"><button class="unit" style="flex:2;margin:0;width:auto" data-u="'+u+'">'+DATA[g][u].t+'<small>'+(best?'Điểm cao nhất: '+best+'/6':'Chưa làm')+'</small></button></div>'}
-    h+='</div><div class="card"><h2>🔤 Từ vựng: nghe – ghi âm – luyện tập</h2>'+VOC[g].map(function(u,ui){return '<div style="margin-top:12px"><b>'+u.t+'</b><div class="row" style="margin-top:6px">'+u.l.map(function(l,li){return '<button style="flex:1" data-v="'+ui+'-'+li+'">'+l.n+'<small style="display:block;color:var(--mut)">'+l.w.length+' từ</small></button>'}).join('')+'</div></div>'}).join('')+'</div>';document.getElementById("units").innerHTML=h;
-    app.querySelectorAll("[data-u]").forEach(function(b){b.onclick=function(){keep();if(!S.name){document.getElementById("nm").focus();return}start(g,b.dataset.u)}});app.querySelectorAll("[data-v]").forEach(function(b){b.onclick=function(){keep();if(!S.name){document.getElementById("nm").focus();return}S.vk=b.dataset.v;vstart(g,b.dataset.v)}});}
+function home(){
+  app.style.maxWidth="";
+  if(!S.name||!S.cls||!S.grade)return sGate();
+  var g=S.grade,tab=S.hub||"v",us=VOC[g],ui=S.hu==null||S.hu>=us.length?0:S.hu;
+  var h='<div class="card" style="padding:10px 14px"><div class="row" style="align-items:center"><span style="flex:1">👋 <b>'+esc(S.name)+'</b> · lớp '+esc(S.cls)+' · Khối '+esc(g)+'</span><button class="link" id="chg">đổi</button></div></div>'+
+  '<div class="row" style="margin-bottom:10px;flex-wrap:nowrap"><button class="tabb '+(tab=="v"?"sel":"")+'" data-hub="v">🔤 Luyện từ vựng</button><button class="tabb '+(tab=="h"?"sel":"")+'" data-hub="h">📝 Làm bài tập</button></div>';
+  if(tab=="v"){
+    h+='<div class="card"><h2>Từ vựng Lớp '+esc(g)+'</h2><p class="hint" style="margin:0 0 8px">Chọn unit:</p><div class="ugrid">'+us.map(function(u,i){return '<button class="ut '+(i==ui?"sel":"")+'" data-u="'+i+'">'+((u.t.match(/Unit\s*(\d+)/)||[])[1]||i+1)+'</button>'}).join("")+'</div>'+
+    '<p style="margin:12px 0 8px"><b>'+esc(us[ui].t)+'</b></p><div class="row" style="flex-wrap:nowrap">'+us[ui].l.map(function(l,li){return '<button class="big lb" data-v="'+ui+'-'+li+'" style="flex:1;margin-top:0">'+esc(l.n)+'<small>'+l.w.length+' từ</small></button>'}).join("")+'</div></div>';
+  }else{
+    h+='<div class="card"><div class="row" style="align-items:center;flex-wrap:nowrap"><h2 style="flex:1;margin:0">Bài tập thầy/cô giao</h2><button id="rf">🔄</button></div><div id="hwbox" style="margin-top:10px"></div></div>';
+  }
+  $(h+'<p style="text-align:center"><button class="link" id="tc">← Về màn hình đầu</button></p>');
+  document.getElementById("chg").onclick=sGate;document.getElementById("tc").onclick=landing;
+  app.querySelectorAll("[data-hub]").forEach(function(b){b.onclick=function(){S.hub=b.dataset.hub;home()}});
+  app.querySelectorAll("[data-u]").forEach(function(b){b.onclick=function(){S.hu=+b.dataset.u;home()}});
+  app.querySelectorAll("[data-v]").forEach(function(b){b.onclick=function(){S.vk=b.dataset.v;vstart(g,b.dataset.v)}});
+  if(tab=="h"){var box=document.getElementById("hwbox");hwLoad(box,false);document.getElementById("rf").onclick=function(){hwLoad(box,true)}}
+}
+function hwLoad(box,force){
+  var u=apiBase();S.api=u;
+  if(!u){box.innerHTML='<p>Thầy/cô chưa kết nối hệ thống giao bài. Em vào mục <b>Luyện từ vựng</b> trước nhé.</p>';return}
+  var show=function(items){
+    var L=items.filter(function(x){var c=String(x.cls||"").trim();return String(x.g)==String(S.grade)&&(!c||c.split(/[,;]/).some(function(y){return nrm(y)==nrm(S.cls)}))}).sort(function(a,b){return String(b.date||"").localeCompare(String(a.date||""))});
+    if(!L.length){box.innerHTML='<p>Hiện chưa có bài nào cho lớp '+esc(S.cls)+'. Em quay lại sau nhé!</p>';return}
+    box.innerHTML='<div class="hwgrid">'+L.map(function(x){return '<button data-id="'+esc(x.id)+'">'+(load("done-"+x.id)?"✅ ":"📝 ")+esc(x.t)+'<small style="display:block;color:var(--mut)">'+(x.date?dm(x.date):"")+(x.tiet?" · Tiết "+esc(x.tiet):"")+'</small></button>'}).join("")+'</div>';
+    box.querySelectorAll("[data-id]").forEach(function(b){b.onclick=function(){
+      b.disabled=true;
+      fetch(u+"?action=get&id="+encodeURIComponent(b.dataset.id)).then(function(r){return r.json()}).then(function(d){if(!d.data)throw 0;S.A=d.data;S.aid=b.dataset.id;asgStart()}).catch(function(){b.disabled=false;alert("Chưa mở được bài. Em thử lại nhé.")});
+    }});
+  };
+  if(S.hwItems&&!force){show(S.hwItems);return}
+  box.innerHTML='<p>Đang tải danh sách bài…</p>';
+  fetch(u+"?action=pub").then(function(r){return r.json()}).then(function(d){S.hwItems=d.items||[];show(S.hwItems)}).catch(function(){box.innerHTML='<p>Không tải được danh sách bài. Em kiểm tra mạng rồi bấm 🔄 nhé.</p>'});
 }
 function keep(){var n=document.getElementById("nm"),c=document.getElementById("cl");if(n){S.name=n.value.trim();save("nm",S.name)}if(c){S.cls=c.value.trim();save("cl",S.cls)}}
 
@@ -583,17 +614,23 @@ function apiBase(){return API_DEFAULT||load("gs_api")}
 function landing(){
   app.style.maxWidth="";S.tAuth=S.tAuth||0;
   $('<div style="text-align:center;margin-top:6px">'+dim("rainbow",120)+'</div><h1 style="text-align:center;margin:2px 0;font-size:32px">'+rbw("English Practice")+'</h1><p class="sub" style="text-align:center">Global Success · Lớp 3, 4, 5</p><div class="card" style="text-align:center"><p><b>Em là ai?</b></p><button class="big" id="rs" style="font-size:22px;padding:20px">🧒 Học sinh</button><button class="big" id="rt" style="font-size:22px;padding:20px;background:var(--card);border-color:var(--line);color:var(--ink)">👩‍🏫 Giáo viên</button></div>');
-  document.getElementById("rs").onclick=sMode;document.getElementById("rt").onclick=teacher;app.insertAdjacentHTML("beforeend","<div class=\"parade\">"+["whale","sheep","turtle","ladybug"].map(function(n){return dim(n,56)}).join("")+"</div>");
+  document.getElementById("rs").onclick=sGate;document.getElementById("rt").onclick=teacher;app.insertAdjacentHTML("beforeend","<div class=\"parade\">"+["whale","sheep","turtle","ladybug"].map(function(n){return dim(n,56)}).join("")+"</div>");
 }
 function sMode(){
   $('<h1>🧒 Học sinh</h1><p class="sub">Hôm nay em muốn làm gì?</p><div class="card"><button class="big" id="m1" style="font-size:21px;padding:18px">🌱 Tự luyện từ vựng</button><button class="big" id="m2" style="font-size:21px;padding:18px">📝 Làm bài tập thầy/cô giao</button></div><p style="text-align:center"><button class="link" id="b0">← Quay lại</button></p>');
   document.getElementById("m1").onclick=function(){sGate("self")};document.getElementById("m2").onclick=function(){sGate("hw")};document.getElementById("b0").onclick=landing;
 }
-function sGate(mode){
-  app.style.maxWidth="";
-  $('<h1>'+(mode=="hw"?"📝 Làm bài tập":"🌱 Tự luyện")+'</h1><p class="sub">Em nhập tên và lớp nhé</p><div class="card"><label for="nm">Tên của em</label><input type="text" id="nm" value="'+esc(load("nm"))+'"><label for="cl">Lớp (ví dụ 4A)</label><input type="text" id="cl" value="'+esc(load("cl"))+'"><button class="big" id="go">Tiếp tục</button></div><p style="text-align:center"><button class="link" id="b0">← Quay lại</button></p>');
-  document.getElementById("b0").onclick=sMode;
-  document.getElementById("go").onclick=function(){keep();if(!S.name){document.getElementById("nm").focus();return}if(!S.cls){document.getElementById("cl").focus();return}mode=="hw"?hwList():home()};
+function sGate(){
+  app.style.maxWidth="";if(!S.grade)S.grade=load("gr")||"";
+  $('<h1>🧒 Học sinh</h1><p class="sub">Em chọn khối, nhập tên và lớp nhé</p><div class="card"><label>Khối</label><div class="row grades">'+[3,4,5].map(function(n){return '<button data-g="'+n+'" class="'+(S.grade==n?"sel":"")+'">Lớp '+n+'</button>'}).join("")+'</div><label for="nm">Tên của em</label><input type="text" id="nm" value="'+esc(load("nm"))+'"><label for="cl">Lớp (ví dụ 4A)</label><input type="text" id="cl" value="'+esc(load("cl"))+'"><button class="big" id="go">Tiếp tục</button><p id="gm" class="sc-bad"></p></div><p style="text-align:center"><button class="link" id="b0">← Quay lại</button></p>');
+  document.getElementById("b0").onclick=landing;
+  app.querySelectorAll("[data-g]").forEach(function(b){b.onclick=function(){keep();S.grade=b.dataset.g;save("gr",S.grade);S.hu=0;S.hwItems=null;sGate()}});
+  document.getElementById("go").onclick=function(){keep();var m=document.getElementById("gm");
+    if(!S.grade){m.textContent="Em chọn khối nhé.";return}
+    if(!S.name){m.textContent="Em nhập tên nhé.";document.getElementById("nm").focus();return}
+    if(!S.cls){m.textContent="Em nhập lớp nhé.";document.getElementById("cl").focus();return}
+    home();
+  };
 }
 function hwList(){
   var u=apiBase();S.api=u;
