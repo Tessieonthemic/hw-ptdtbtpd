@@ -433,7 +433,7 @@ function statsHtml(){
   h+='<div class="card" style="overflow-x:auto"><h2>Chuyên cần 14 ngày gần nhất</h2><table class="tb"><tr><th>Học sinh</th>'+D.map(function(d){return '<th style="padding:6px 3px;text-align:center">'+dm(d)+'</th>'}).join("")+'</tr>'+L.map(function(e){
     var all={};R.forEach(function(r){if(r.cls.toLowerCase()==e.cls.toLowerCase()&&r.name.toLowerCase()==e.name.toLowerCase())all[r.date]=1});
     return '<tr><td>'+esc(e.name)+'</td>'+D.map(function(d){return '<td style="text-align:center;padding:6px 3px">'+(all[d]?'<span class="sc-ok">✓</span>':'<span class="hint">·</span>')+'</td>'}).join("")+'</tr>'}).join("")+'</table></div>';
-  return h+'<p style="text-align:center"><button class="link" id="clr">Xóa toàn bộ dữ liệu thống kê</button></p>';
+  return h+resHtml()+'<p style="text-align:center"><button class="link" id="clr">Xóa toàn bộ kết quả</button></p>';
 }
 function statsBind(){
   var fc=document.getElementById("fc");if(!fc)return;
@@ -445,7 +445,7 @@ function statsBind(){
     var t="Họ tên,Lớp,Loại,Bài,Điểm,Tổng,Phần trăm,Ngày,Giây\n"+recs().map(function(r){return [r.name,r.cls,r.kind=="v"?"Từ vựng":"Bài tập",r.title,r.a,r.b,r.pct,r.date,r.sec].map(q).join(",")}).join("\n");
     var a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\uFEFF"+t],{type:"text/csv"}));a.download="ket-qua-hoc-sinh.csv";document.body.appendChild(a);a.click();document.body.removeChild(a);
   };
-  var c=document.getElementById("clr");if(c)c.onclick=function(){if(confirm("Xóa toàn bộ kết quả đã nhập? Hãy xuất CSV trước nếu cần lưu.")){save("gs_rec","[]");teacher()}};
+  resBind();var c=document.getElementById("clr");if(c)c.onclick=function(){var all=recs().map(function(r){return r.raw});if(all.length&&confirm("Xóa TOÀN BỘ "+all.length+" kết quả (cả trong Google Sheets)? Không thể hoàn tác. Hãy xuất CSV trước nếu cần lưu."))delResults(all)};
 }
 function importHtml(){
   return '<div class="card"><h2>Dán kết quả học sinh gửi qua Zalo</h2><p class="hint">Mỗi dòng là một kết quả. Dán nhiều dòng cùng lúc cũng được; dòng trùng sẽ tự bỏ qua.</p><textarea id="pst" placeholder="Họ tên: ... | Lớp: ... | ..."></textarea><button class="big" id="add">Thêm vào thống kê</button><p id="msg" class="hint"></p></div>'+
@@ -518,7 +518,37 @@ function customHome(set){
   document.getElementById("h0").onclick=function(){location.hash="";home()};
 }
 var API_DEFAULT=(typeof GS_API!=="undefined"&&GS_API)||"";
-function scriptText(k){k=String(k).replace(/[^0-9]/g,"");return ["var KEY='"+k+"';","var HA=['id','created','data','status'],HR=['time','id','report'];","function sh(n,h){var ss=SpreadsheetApp.getActiveSpreadsheet(),s=ss.getSheetByName(n);if(!s){s=ss.insertSheet(n);s.appendRow(h)}return s}","function out(o){return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON)}","function doPost(e){","  var b=JSON.parse(e.postData.contents);","  if(b.action=='save'){","    if(b.key!=KEY)return out({error:'key'});","    var id='b'+Utilities.getUuid().replace(/-/g,'').slice(0,5);","    sh('BaiTap',HA).appendRow([id,new Date(),JSON.stringify(b.data),'']);","    return out({id:id});","  }","  if(b.action=='revoke'){","    if(b.key!=KEY)return out({error:'key'});","    var s=sh('BaiTap',HA),r=s.getDataRange().getValues();","    for(var i=1;i<r.length;i++)if(String(r[i][0])==b.id)s.getRange(i+1,4).setValue('x');","    return out({ok:1});","  }","  if(b.action=='result'){","    sh('KetQua',HR).appendRow([new Date(),b.id,b.data.report]);","    return out({ok:1});","  }","  return out({error:'action'});","}","function doGet(e){","  var a=e.parameter;","  if(a.action=='auth')return out(a.key==KEY?{auth:true}:{error:'key'});","  if(a.action=='get'){","    var r=sh('BaiTap',HA).getDataRange().getValues();","    for(var i=1;i<r.length;i++)if(String(r[i][0])==a.id&&r[i][3]!='x')return out({data:JSON.parse(r[i][2])});","    return out({error:'notfound'});","  }","  if(a.action=='pub'){","    var items=sh('BaiTap',HA).getDataRange().getValues().slice(1).filter(function(x){return x[3]!='x'}).slice(-80).map(function(x){var d=JSON.parse(x[2]);return {id:String(x[0]),t:d.t,g:d.g,date:d.date,tiet:d.tiet,cls:d.cls}});","    return out({items:items});","  }","  if(a.action=='list'){","    if(a.key!=KEY)return out({error:'key'});","    var A=sh('BaiTap',HA).getDataRange().getValues().slice(1).map(function(x){var d=JSON.parse(x[2]);return {id:String(x[0]),title:d.t,g:d.g,u:d.u,l:d.l,date:d.date,tiet:d.tiet,cls:d.cls,status:x[3]}});","    var R=sh('KetQua',HR).getDataRange().getValues().slice(1).map(function(x){return {time:x[0],id:String(x[1]),report:x[2]}});","    return out({assignments:A,results:R});","  }","  return out({ok:1});","}"].join("\n")}
+function scriptText(k){k=String(k).replace(/[^0-9]/g,"");return ["var KEY='"+k+"';","var HA=['id','created','data','status'],HR=['time','id','report'];","function sh(n,h){var ss=SpreadsheetApp.getActiveSpreadsheet(),s=ss.getSheetByName(n);if(!s){s=ss.insertSheet(n);s.appendRow(h)}return s}","function out(o){return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON)}","function doPost(e){","  var b=JSON.parse(e.postData.contents);","  if(b.action=='save'){","    if(b.key!=KEY)return out({error:'key'});","    var id='b'+Utilities.getUuid().replace(/-/g,'').slice(0,5);","    sh('BaiTap',HA).appendRow([id,new Date(),JSON.stringify(b.data),'']);","    return out({id:id});","  }","  if(b.action=='revoke'){","    if(b.key!=KEY)return out({error:'key'});","    var s=sh('BaiTap',HA),r=s.getDataRange().getValues();","    for(var i=1;i<r.length;i++)if(String(r[i][0])==b.id)s.getRange(i+1,4).setValue('x');","    return out({ok:1});","  }","  if(b.action=='delres'){","    if(b.key!=KEY)return out({error:'key'});","    var s2=sh('KetQua',HR),r2=s2.getDataRange().getValues(),st={},n=0;","    b.reports.forEach(function(x){st[String(x).trim()]=1});","    for(var j=r2.length-1;j>=1;j--)if(st[String(r2[j][2]).trim()]){s2.deleteRow(j+1);n++}","    return out({deleted:n});","  }","  if(b.action=='result'){","    sh('KetQua',HR).appendRow([new Date(),b.id,b.data.report]);","    return out({ok:1});","  }","  return out({error:'action'});","}","function doGet(e){","  var a=e.parameter;","  if(a.action=='auth')return out(a.key==KEY?{auth:true}:{error:'key'});","  if(a.action=='get'){","    var r=sh('BaiTap',HA).getDataRange().getValues();","    for(var i=1;i<r.length;i++)if(String(r[i][0])==a.id&&r[i][3]!='x')return out({data:JSON.parse(r[i][2])});","    return out({error:'notfound'});","  }","  if(a.action=='pub'){","    var items=sh('BaiTap',HA).getDataRange().getValues().slice(1).filter(function(x){return x[3]!='x'}).slice(-80).map(function(x){var d=JSON.parse(x[2]);return {id:String(x[0]),t:d.t,g:d.g,date:d.date,tiet:d.tiet,cls:d.cls}});","    return out({items:items});","  }","  if(a.action=='list'){","    if(a.key!=KEY)return out({error:'key'});","    var A=sh('BaiTap',HA).getDataRange().getValues().slice(1).map(function(x){var d=JSON.parse(x[2]);return {id:String(x[0]),title:d.t,g:d.g,u:d.u,l:d.l,date:d.date,tiet:d.tiet,cls:d.cls,status:x[3]}});","    var R=sh('KetQua',HR).getDataRange().getValues().slice(1).map(function(x){return {time:x[0],id:String(x[1]),report:x[2]}});","    return out({assignments:A,results:R});","  }","  return out({ok:1});","}"].join("\n")}
+function resHtml(){
+  var R=recs().filter(function(r){return !T.cls||r.cls==T.cls}),q=(T.q||"").toLowerCase();
+  if(q)R=R.filter(function(r){return r.name.toLowerCase().indexOf(q)>=0});
+  R.sort(function(a,b){return b.date.localeCompare(a.date)});T.list=R.slice(0,60);
+  return '<div class="card" style="overflow-x:auto"><h2>🗑️ Quản lý kết quả</h2><div class="row" style="align-items:center"><input type="text" id="rq" placeholder="Lọc theo tên học sinh" value="'+esc(T.q||"")+'" style="flex:1;min-width:150px"><button id="rsa">Chọn tất cả</button><button id="rdel">Xóa đã chọn</button></div><p class="hint">Hiển thị '+T.list.length+'/'+R.length+' kết quả mới nhất. Kết quả đã xóa không thể khôi phục.</p>'+
+  (T.list.length?'<table class="tb"><tr><th></th><th>Học sinh</th><th>Lớp</th><th>Bài</th><th>Điểm</th><th>Ngày</th></tr>'+T.list.map(function(r,i){return '<tr><td><input type="checkbox" data-ri="'+i+'" style="width:20px;height:20px"></td><td>'+esc(r.name)+'</td><td>'+esc(r.cls)+'</td><td style="max-width:200px">'+esc(r.title)+'</td><td class="'+scCls(r.pct)+'">'+r.a+'/'+r.b+'</td><td>'+dm(r.date)+'</td></tr>'}).join("")+'</table>':'<p>Không có kết quả nào.</p>')+'</div>';
+}
+function resBind(){
+  var q=document.getElementById("rq");if(!q)return;
+  q.onchange=function(){T.q=q.value.trim();teacher()};
+  var all=false;document.getElementById("rsa").onclick=function(){all=!all;app.querySelectorAll("[data-ri]").forEach(function(c){c.checked=all});this.textContent=all?"Bỏ chọn":"Chọn tất cả"};
+  document.getElementById("rdel").onclick=function(){
+    var raws=[];app.querySelectorAll("[data-ri]").forEach(function(c){if(c.checked)raws.push(T.list[+c.dataset.ri].raw)});
+    if(!raws.length){alert("Thầy/cô chưa chọn kết quả nào.");return}
+    if(confirm("Xóa "+raws.length+" kết quả đã chọn? Không thể hoàn tác."))delResults(raws);
+  };
+}
+function delResults(raws){
+  var set={};raws.forEach(function(x){set[x]=1});
+  saveRecs(recs().filter(function(r){return !set[r.raw]}));
+  var del=[];try{del=JSON.parse(load("gs_del")||"[]")}catch(e){}
+  save("gs_del",JSON.stringify(del.concat(raws)));
+  var u=apiBase(),k=load("gs_key");
+  if(!u||!k){teacher();return}
+  fetch(u,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"delres",key:k,reports:raws})}).then(function(r){return r.json()}).then(function(d){
+    if(d.error=="action")alert("Đã xóa khỏi báo cáo trên máy này. Để xóa cả trong Google Sheets, thầy/cô cập nhật mã Apps Script mới (tab Kết nối) rồi triển khai lại.");
+    else if(d.error)alert("Mã bảo mật chưa khớp nên chưa xóa được trong Google Sheets.");
+    teacher();
+  }).catch(function(){alert("Đã xóa khỏi báo cáo nhưng chưa xóa được trong Google Sheets (mất kết nối). Kết quả đó sẽ không hiện lại trong báo cáo.");teacher()});
+}
 function cpTa(id,b){var t=document.getElementById(id);t.select();try{document.execCommand("copy");b.textContent="✅ Đã sao chép!"}catch(e){}}
 function linkFor(id){var u=apiBase(),dep=(u.match(/\/s\/([^/]+)\//)||[])[1]||"";return location.href.split("#")[0]+"#a="+id+((u&&u==API_DEFAULT)?"":"."+dep)}
 function cnHtml(){
@@ -544,7 +574,7 @@ function syncNow(){
   fetch(u+"?action=list&key="+encodeURIComponent(k)).then(function(r){return r.json()}).then(function(d){
     if(d.error){alert("Mã bí mật chưa khớp. Vào tab Kết nối để kiểm tra.");teacher();return}
     var R=recs(),seen={},cnt={};R.forEach(function(r){seen[r.raw]=1});
-    d.results.forEach(function(x){cnt[x.id]=(cnt[x.id]||0)+1;var r=parseLine(String(x.report));if(r&&!seen[r.raw]){seen[r.raw]=1;R.push(r)}});
+    var tomb={};try{JSON.parse(load("gs_del")||"[]").forEach(function(x){tomb[x]=1})}catch(e){}d.results.forEach(function(x){if(tomb[String(x.report).trim()])return;cnt[x.id]=(cnt[x.id]||0)+1;var r=parseLine(String(x.report));if(r&&!seen[r.raw]){seen[r.raw]=1;R.push(r)}});
     saveRecs(R);save("gs_asg",JSON.stringify(d.assignments.map(function(a){a.n=cnt[a.id]||0;return a}).reverse()));teacher();
   }).catch(function(){alert("Không kết nối được. Kiểm tra lại tab Kết nối.");teacher()});
 }
